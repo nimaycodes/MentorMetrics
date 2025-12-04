@@ -13,12 +13,12 @@ graph TD
     
     subgraph "Analysis Pipeline"
         API -->|Trigger| Pipeline[Pipeline Orchestrator]
-        Pipeline -->|Transcribe| STT[Whisper (STT)]
+        Pipeline -->|Transcribe| STT["Whisper (STT)"]
         
         subgraph "Feature Extraction"
-            STT --> Text[Text Analysis (Gemini)]
-            Pipeline --> Audio[Audio Analysis (Librosa)]
-            Pipeline --> Visual[Visual Analysis (MediaPipe)]
+            STT --> Text["Text Analysis (Gemini)"]
+            Pipeline --> Audio["Audio Analysis (Librosa)"]
+            Pipeline --> Visual["Visual Analysis (MediaPipe)"]
         end
         
         Text --> Fusion[Fusion Engine]

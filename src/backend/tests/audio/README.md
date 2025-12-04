@@ -24,11 +24,7 @@ pytest src/backend/tests/audio/ --cov=src.backend.pipelines.audio
 
 ## Note
 
-These tests use **placeholder implementations** since the actual audio analysis modules haven't been built yet. Once the modules are implemented:
-
-1. Update imports to use actual modules instead of mock functions
-2. Tests should pass with minimal modifications
-3. Add additional integration tests as needed
+These tests run against the **actual audio analysis modules** (`wpm_calculator`, `silence_detector`, `clarity_analyzer`). They use synthetic audio data generated within the tests or mock inputs where appropriate.
 
 ## Test Coverage
 
