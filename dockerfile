@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Download a static ffmpeg binary (prebuilt) and install it — avoids apt ffmpeg issues
+# Download static ffmpeg binary (prebuilt) and install it — avoids apt ffmpeg issues
 RUN wget -qO /tmp/ffmpeg.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
     && mkdir -p /tmp/ffmpeg && tar -xJf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg --strip-components=1 \
     && mv /tmp/ffmpeg/ffmpeg /usr/local/bin/ffmpeg \
@@ -17,19 +17,20 @@ RUN wget -qO /tmp/ffmpeg.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg
     && chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe \
     && rm -rf /tmp/ffmpeg /tmp/ffmpeg.tar.xz
 
-# Copy requirements and install Python deps (run as root so pip can write to site-packages)
+# Copy requirements first so we can cache layer after dependency changes
 COPY requirements.txt .
+
+# Upgrade pip, install CPU-only PyTorch first (smaller), then install the rest of requirements.
 RUN python -m pip install --upgrade pip setuptools wheel && \
+    pip install --index-url https://download.pytorch.org/whl/cpu torch==2.9.1+cpu --no-cache-dir || true && \
     pip install --no-cache-dir -r requirements.txt
 
-# Create non-root user and switch ownership of app files
+# Create non-root user and set ownership
 RUN useradd --create-home appuser
 COPY . .
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Expose port (Railway provides $PORT at runtime)
 EXPOSE 8080
 
-# Start command — change main:app if your FastAPI app lives elsewhere
 ENTRYPOINT ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
