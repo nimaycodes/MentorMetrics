@@ -1,36 +1,32 @@
+# Use Python 3.10 to match wheels for mediapipe/whl-heavy packages
 FROM python:3.10-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Install system packages and ffmpeg
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      wget ca-certificates build-essential libssl-dev libffi-dev libpq-dev \
+      libsndfile1 libgl1 libglib2.0-0 ffmpeg xz-utils && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set workdir
 WORKDIR /app
 
-# Install system libs & build deps required by some Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget xz-utils ca-certificates build-essential libssl-dev libffi-dev libpq-dev gcc \
-    libsndfile1 libgl1 libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Download static ffmpeg binary (prebuilt) and install it — avoids apt ffmpeg issues
-RUN wget -qO /tmp/ffmpeg.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
-    && mkdir -p /tmp/ffmpeg && tar -xJf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg --strip-components=1 \
-    && mv /tmp/ffmpeg/ffmpeg /usr/local/bin/ffmpeg \
-    && mv /tmp/ffmpeg/ffprobe /usr/local/bin/ffprobe \
-    && chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe \
-    && rm -rf /tmp/ffmpeg /tmp/ffmpeg.tar.xz
-
-# Copy requirements first so we can cache layer after dependency changes
+# Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Upgrade pip, install CPU-only PyTorch first (smaller), then install the rest of requirements.
+# Optional: copy a constraints file if you have one (recommended)
+# COPY constraints.txt .
+
+# Install pip/tools, install CPU torch first (from PyTorch index), then deps.
+# Use --prefer-binary to prefer wheels (reduces resolver/build time).
 RUN python -m pip install --upgrade pip setuptools wheel && \
-    pip install --index-url https://download.pytorch.org/whl/cpu torch==2.9.1+cpu --no-cache-dir || true && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --index-url https://download.pytorch.org/whl/cpu \
+      --prefer-binary torch==2.9.1+cpu --no-cache-dir || true && \
+    pip install --no-cache-dir --prefer-binary -r requirements.txt
 
-# Create non-root user and set ownership
-RUN useradd --create-home appuser
+# Copy app files
 COPY . .
-RUN chown -R appuser:appuser /app
-USER appuser
 
-EXPOSE 8080
-
-ENTRYPOINT ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+# Expose and run
+EXPOSE 8000
+CMD ["uvicorn", "your_module:app", "--host", "0.0.0.0", "--port", "8000"]
